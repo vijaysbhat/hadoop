@@ -21,6 +21,8 @@ package org.apache.hadoop.yarn.server.resourcemanager.webapp;
 import org.apache.hadoop.yarn.server.webapp.WebPageUtils;
 import org.apache.hadoop.yarn.webapp.SubView;
 import org.apache.hadoop.yarn.webapp.view.TwoColumnLayout;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Whitelist;
 
 import static org.apache.hadoop.yarn.util.StringHelper.sjoin;
 import static org.apache.hadoop.yarn.webapp.YarnWebParams.APP_STATE;
@@ -38,11 +40,15 @@ public class RmView extends TwoColumnLayout {
     set(DATATABLES_ID, "apps");
     set(initID(DATATABLES, "apps"), initAppsTable());
     setTableStyles(html, "apps", ".queue {width:6em}", ".ui {width:8em}");
-
     // Set the correct title.
     String reqState = $(APP_STATE);
     reqState = (reqState == null || reqState.isEmpty() ? "All" : reqState);
     setTitle(sjoin(reqState, "Applications"));
+
+    String refreshInterval = request().getParameter("refresh");
+    if (refreshInterval != null)
+      //sanitize input against SQL injection / XSS attacks
+      html.meta_http("refresh", Jsoup.clean(refreshInterval, Whitelist.none()));
   }
 
   protected void commonPreHead(Page.HTML<_> html) {

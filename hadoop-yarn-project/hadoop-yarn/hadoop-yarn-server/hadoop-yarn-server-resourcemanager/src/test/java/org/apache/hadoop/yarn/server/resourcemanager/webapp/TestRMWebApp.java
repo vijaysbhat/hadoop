@@ -25,11 +25,15 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.io.PrintWriter;
 import java.util.List;
 import java.util.concurrent.ConcurrentMap;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.yarn.api.ApplicationBaseProtocol;
 import org.apache.hadoop.yarn.api.protocolrecords.GetApplicationsRequest;
@@ -91,6 +95,7 @@ public class TestRMWebApp {
     c.index();
     assertEquals("Applications", c.get(TITLE, "unknown"));
   }
+
 
   @Test public void testView() {
     Injector injector = WebAppTests.createMockInjector(RMContext.class,
@@ -154,6 +159,46 @@ public class TestRMWebApp {
     instance.render();
     WebAppTests.flushOutput(injector);
 
+  }
+
+  @Test
+  public void testAutoRefresh() {
+    final RMContext rmContext = mockRMContext(3, 2, 12, 8 * GiB);
+    Injector injector = WebAppTests.createMockInjector(RMContext.class,
+        rmContext,
+        new Module() {
+          @Override
+          public void configure(Binder binder) {
+            try {
+              binder.bind(ResourceManager.class).toInstance(mockRm(rmContext));
+              binder.bind(ApplicationBaseProtocol.class).toInstance(mockRm(rmContext).getClientRMService());
+            } catch (IOException e) {
+              throw new IllegalStateException(e);
+            }
+          }
+        });
+    RmView instance = injector.getInstance(RmView.class);
+    when(instance.request().getParameter("refresh")).thenReturn("30");
+
+    //test that refresh header written out to HttpServletResponse
+    PrintWriter writer;
+    try {
+      File f = File.createTempFile("yarn-rm", "");
+      writer = new PrintWriter(f.getAbsolutePath());
+      when(instance.response().getWriter()).thenReturn(writer);
+      instance.render();
+      writer.flush();
+      assert(FileUtils.readFileToString(new File(f.getAbsolutePath()), "UTF-8")
+          .contains("\"refresh\" content=\"30\""));
+    } catch (FileNotFoundException e) {
+      e.printStackTrace();
+      assert(false);
+    } catch (IOException e) {
+      e.printStackTrace();
+      assert(false);
+    } finally {
+      WebAppTests.flushOutput(injector);
+    }
   }
 
   public static RMContext mockRMContext(int numApps, int racks, int numNodes,
