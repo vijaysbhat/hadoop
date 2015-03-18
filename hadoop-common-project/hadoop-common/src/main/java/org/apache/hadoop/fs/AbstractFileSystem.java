@@ -350,45 +350,10 @@ public abstract class AbstractFileSystem {
    * @throws InvalidPathException if the path is invalid
    */
   public void checkPath(Path path) {
-    URI uri = path.toUri();
-    String thatScheme = uri.getScheme();
-    String thatAuthority = uri.getAuthority();
-    if (thatScheme == null) {
-      if (thatAuthority == null) {
-        if (path.isUriPathAbsolute()) {
-          return;
-        }
-        throw new InvalidPathException("relative paths not allowed:" + 
-            path);
-      } else {
-        throw new InvalidPathException(
-            "Path without scheme with non-null authority:" + path);
-      }
-    }
-    String thisScheme = this.getUri().getScheme();
-    String thisHost = this.getUri().getHost();
-    String thatHost = uri.getHost();
-    
-    // Schemes and hosts must match.
-    // Allow for null Authority for file:///
-    if (!thisScheme.equalsIgnoreCase(thatScheme) ||
-       (thisHost != null && 
-            !thisHost.equalsIgnoreCase(thatHost)) ||
-       (thisHost == null && thatHost != null)) {
-      throw new InvalidPathException("Wrong FS: " + path + ", expected: "
-          + this.getUri());
-    }
-    
-    // Ports must match, unless this FS instance is using the default port, in
-    // which case the port may be omitted from the given URI
-    int thisPort = this.getUri().getPort();
-    int thatPort = uri.getPort();
-    if (thatPort == -1) { // -1 => defaultPort of Uri scheme
-      thatPort = this.getUriDefaultPort();
-    }
-    if (thisPort != thatPort) {
-      throw new InvalidPathException("Wrong FS: " + path + ", expected: "
-          + this.getUri());
+    try {
+      path.checkFileSystemPath(this.getUri(), this.getUriDefaultPort(), null /* defaultUri */);
+    } catch (IllegalArgumentException e) {
+      throw new InvalidPathException(e.getMessage());
     }
   }
   

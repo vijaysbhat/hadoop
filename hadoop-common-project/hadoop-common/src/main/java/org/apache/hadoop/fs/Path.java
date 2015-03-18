@@ -29,6 +29,7 @@ import org.apache.hadoop.HadoopIllegalArgumentException;
 import org.apache.hadoop.classification.InterfaceAudience;
 import org.apache.hadoop.classification.InterfaceStability;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.net.NetUtils;
 
 /** Names a file or directory in a {@link FileSystem}.
  * Path strings use slash as the directory separator.  A path string is
@@ -256,6 +257,55 @@ public class Path implements Comparable {
     
     return path;
   }
+
+  /**
+   * Check that this path belongs to the filesystem
+   *
+   * If the path is fully qualified URI, then its scheme and authority
+   * matches that of this file system. Otherwise the path must be
+   * slash-relative name.
+   *
+   * @throws IllegalArgumentException if the path is invalid
+   */
+  void checkFileSystemPath(URI fsUri, int fsUriDefaultPort, URI defaultUri) {
+    URI uri = this.toUri();
+    String thatScheme = uri.getScheme();
+    if (thatScheme == null) {
+      return;                   // fs is relative
+    }
+
+    URI thisUri = NetUtils.getCanonicalUri(fsUri, fsUriDefaultPort);
+    String thisScheme = thisUri.getScheme();
+    //authority and scheme are not case sensitive
+    if (thisScheme.equalsIgnoreCase(thatScheme)) {// schemes match
+      String thisAuthority = thisUri.getAuthority();
+      String thatAuthority = uri.getAuthority();
+      if (thatAuthority == null &&                // path's authority is null
+          thisAuthority != null) {                // fs has an authority
+        if (defaultUri != null &&
+            thisScheme.equalsIgnoreCase(defaultUri.getScheme())) {
+          uri = defaultUri;                       // schemes match, so use this uri instead
+        } else {
+          uri = null;                             // can't determine auth of the path
+        }
+      }
+
+
+      if (uri != null) {
+        // canonicalize uri before comparing with this fs
+        uri = NetUtils.getCanonicalUri(uri, fsUriDefaultPort);
+        thatAuthority = uri.getAuthority();
+        if ((thisAuthority == null && thatAuthority == null) ||       // authorities match
+            (thisAuthority != null &&
+                thisAuthority.equalsIgnoreCase(thatAuthority)))
+          return;
+
+      }
+    }
+    throw new IllegalArgumentException("Wrong FS: "+this+
+        ", expected: "+fsUri);
+  }
+
 
   private static boolean hasWindowsDrive(String path) {
     return (WINDOWS && hasDriveLetterSpecifier.matcher(path).find());

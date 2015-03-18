@@ -247,20 +247,7 @@ public abstract class FileSystem extends Configured implements Closeable {
    * @see NetUtils#getCanonicalUri(URI, int)
    */
   protected URI canonicalizeUri(URI uri) {
-    if (uri.getPort() == -1 && getDefaultPort() > 0) {
-      // reconstruct the uri with the default port set
-      try {
-        uri = new URI(uri.getScheme(), uri.getUserInfo(),
-            uri.getHost(), getDefaultPort(),
-            uri.getPath(), uri.getQuery(), uri.getFragment());
-      } catch (URISyntaxException e) {
-        // Should never happen!
-        throw new AssertionError("Valid URI became unparseable: " +
-            uri);
-      }
-    }
-    
-    return uri;
+    return NetUtils.getCanonicalUri(uri, getDefaultPort());
   }
   
   /**
@@ -614,38 +601,11 @@ public abstract class FileSystem extends Configured implements Closeable {
    * @param path to check
    */
   protected void checkPath(Path path) {
-    URI uri = path.toUri();
-    String thatScheme = uri.getScheme();
-    if (thatScheme == null)                // fs is relative
-      return;
-    URI thisUri = getCanonicalUri();
-    String thisScheme = thisUri.getScheme();
-    //authority and scheme are not case sensitive
-    if (thisScheme.equalsIgnoreCase(thatScheme)) {// schemes match
-      String thisAuthority = thisUri.getAuthority();
-      String thatAuthority = uri.getAuthority();
-      if (thatAuthority == null &&                // path's authority is null
-          thisAuthority != null) {                // fs has an authority
-        URI defaultUri = getDefaultUri(getConf());
-        if (thisScheme.equalsIgnoreCase(defaultUri.getScheme())) {
-          uri = defaultUri; // schemes match, so use this uri instead
-        } else {
-          uri = null; // can't determine auth of the path
-        }
-      }
-      if (uri != null) {
-        // canonicalize uri before comparing with this fs
-        uri = canonicalizeUri(uri);
-        thatAuthority = uri.getAuthority();
-        if (thisAuthority == thatAuthority ||       // authorities match
-            (thisAuthority != null &&
-             thisAuthority.equalsIgnoreCase(thatAuthority)))
-          return;
-      }
-    }
-    throw new IllegalArgumentException("Wrong FS: "+path+
-                                       ", expected: "+this.getUri());
+    URI defaultUri = (getConf() != null) ? getDefaultUri(getConf()) : null;
+    path.checkFileSystemPath(this.getUri(), getDefaultPort(), defaultUri);
   }
+
+
 
   /**
    * Return an array containing hostnames, offset and size of 
