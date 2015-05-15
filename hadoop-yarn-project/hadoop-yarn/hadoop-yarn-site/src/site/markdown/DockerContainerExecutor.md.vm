@@ -46,11 +46,31 @@ The following properties must be set in yarn-site.xml:
 
 ```xml
 <property>
+ <name>yarn.nodemanager.docker-container-executor.exec-cmd</name>
+  <value>/usr/bin/docker</value>
+  <description>
+     Command to invoke the Docker client. Command line arguments to the
+     executable can also be specified this setting. This setting will
+     have a higher precedence than yarn.nodemanager.docker-container-executor.exec-name.
+
+     If both yarn.nodemanager.docker-container-executor.exec-cmd and
+     yarn.nodemanager.docker-container-executor.exec-name are empty, user
+     must pass an image name as part of the job invocation(see below).
+  </description>
+</property>
+
+<property>
  <name>yarn.nodemanager.docker-container-executor.exec-name</name>
   <value>/usr/bin/docker</value>
   <description>
-     Name or path to the Docker client. This is a required parameter. If this is empty,
-     user must pass an image name as part of the job invocation(see below).
+     Absolute path to the Docker client. The system does a fileExists check on the
+     specified value, so the user will not be able to pass in any arguments to the executable.
+     The yarn.nodemanager.docker-container-executor.exec-cmd config setting can be used
+     instead to pass in command line arguments to the docker executable.
+
+     If both yarn.nodemanager.docker-container-executor.exec-cmd and
+     yarn.nodemanager.docker-container-executor.exec-name are empty, user
+     must pass an image name as part of the job invocation(see below).
   </description>
 </property>
 
@@ -119,7 +139,7 @@ Step 1. First ensure that YARN is properly configured with DockerContainerExecut
 
 ```xml
 <property>
- <name>yarn.nodemanager.docker-container-executor.exec-name</name>
+ <name>yarn.nodemanager.docker-container-executor.exec-cmd</name>
   <value>docker -H=tcp://0.0.0.0:4243</value>
   <description>
      Name or path to the Docker client. The tcp socket must be

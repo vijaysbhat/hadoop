@@ -113,12 +113,18 @@ public class DockerContainerExecutor extends ContainerExecutor {
       throw new IllegalStateException(
         "DockerContainerExecutor only works with simple authentication mode");
     }
-    String dockerExecutor = getConf().get(
-      YarnConfiguration.NM_DOCKER_CONTAINER_EXECUTOR_EXEC_NAME,
-      YarnConfiguration.NM_DEFAULT_DOCKER_CONTAINER_EXECUTOR_EXEC_NAME);
-    if (!new File(dockerExecutor).exists()) {
-      throw new IllegalStateException(
-        "Invalid docker exec path: " + dockerExecutor);
+    String dockerExecCmd = getConf().get(
+        YarnConfiguration.NM_DOCKER_CONTAINER_EXECUTOR_EXEC_CMD);
+    // docker-container-executor.exec-cmd has a higher precedence than
+    // docker-container-executor.exec-name
+    if (dockerExecCmd == null) {
+      String dockerExecutor = getConf().get(
+          YarnConfiguration.NM_DOCKER_CONTAINER_EXECUTOR_EXEC_NAME,
+          YarnConfiguration.NM_DEFAULT_DOCKER_CONTAINER_EXECUTOR_EXEC_NAME);
+      if (!new File(dockerExecutor).exists()) {
+        throw new IllegalStateException(
+            "Invalid docker exec path: " + dockerExecutor);
+      }
     }
   }
 
@@ -172,9 +178,15 @@ public class DockerContainerExecutor extends ContainerExecutor {
 
     Preconditions.checkArgument(saneDockerImage(containerImageName), "Image: "
       + containerImageName + " is not a proper docker image");
-    String dockerExecutor = getConf().get(
-      YarnConfiguration.NM_DOCKER_CONTAINER_EXECUTOR_EXEC_NAME,
-      YarnConfiguration.NM_DEFAULT_DOCKER_CONTAINER_EXECUTOR_EXEC_NAME);
+
+    // docker-container-executor.exec-cmd has a higher precedence than
+    // docker-container-executor.exec-name
+    String dockerExecutor = getConf().get(YarnConfiguration.NM_DOCKER_CONTAINER_EXECUTOR_EXEC_NAME);
+    if (dockerExecutor == null) {
+      dockerExecutor = getConf().get(
+          YarnConfiguration.NM_DOCKER_CONTAINER_EXECUTOR_EXEC_NAME,
+          YarnConfiguration.NM_DEFAULT_DOCKER_CONTAINER_EXECUTOR_EXEC_NAME);
+    }
 
     FsPermission dirPerm = new FsPermission(APPDIR_PERM);
     ContainerId containerId = container.getContainerId();

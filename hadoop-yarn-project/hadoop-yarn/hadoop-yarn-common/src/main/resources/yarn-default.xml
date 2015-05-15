@@ -1187,6 +1187,14 @@
   <!--Docker configuration-->
 
   <property>
+      <name>yarn.nodemanager.docker-container-executor.exec-cmd</name>
+      <value>/usr/bin/docker</value>
+      <description>
+          Command to invoke the Docker client.
+      </description>
+  </property>
+
+  <property>
     <name>yarn.nodemanager.docker-container-executor.exec-name</name>
     <value>/usr/bin/docker</value>
     <description>
